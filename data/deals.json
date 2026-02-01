@@ -1,0 +1,40 @@
+{
+  "deals": [
+    {
+      "id": "mf_university_001",
+      "name": "The Quad Apartments",
+      "productType": "multifamily",
+      "neighborhood": "university",
+      "units": 72,
+      "purchasePrice": 16500000,
+      "inPlaceNOI": 900000,
+      "marketNOILiftPct": 0.08,
+      "debt": { "ltv": 0.65, "rate": 0.062, "amortYears": 30 },
+      "notes": "Stable in-place occupancy. Light value-add upside."
+    },
+    {
+      "id": "ind_logistics_001",
+      "name": "Crossdock 42",
+      "productType": "industrial",
+      "neighborhood": "logistics",
+      "units": 1,
+      "purchasePrice": 12800000,
+      "inPlaceNOI": 780000,
+      "marketNOILiftPct": 0.05,
+      "debt": { "ltv": 0.60, "rate": 0.064, "amortYears": 25 },
+      "notes": "Strong tenant demand. Lower expense ratio."
+    },
+    {
+      "id": "ret_aging_001",
+      "name": "Sunset Strip Center",
+      "productType": "retail",
+      "neighborhood": "agingretail",
+      "units": 12,
+      "purchasePrice": 9400000,
+      "inPlaceNOI": 610000,
+      "marketNOILiftPct": 0.12,
+      "debt": { "ltv": 0.60, "rate": 0.068, "amortYears": 25 },
+      "notes": "Higher vacancy risk. Big spread if you can stabilize."
+    }
+  ]
+}
