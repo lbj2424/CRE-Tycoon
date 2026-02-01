@@ -1,0 +1,46 @@
+{
+  "productTypes": [
+    {
+      "id": "multifamily",
+      "name": "Multifamily",
+      "baseExpenseRatio": 0.38,
+      "capexLift": { "rentIndexDelta": 0.06, "vacancyDelta": -0.01 },
+      "build": { "yearsToBuild": 1, "yearsToStabilize": 1, "leaseUpVacancy": 0.22 }
+    },
+    {
+      "id": "industrial",
+      "name": "Industrial",
+      "baseExpenseRatio": 0.30,
+      "capexLift": { "rentIndexDelta": 0.04, "vacancyDelta": -0.005 },
+      "build": { "yearsToBuild": 1, "yearsToStabilize": 1, "leaseUpVacancy": 0.16 }
+    },
+    {
+      "id": "retail",
+      "name": "Retail",
+      "baseExpenseRatio": 0.42,
+      "capexLift": { "rentIndexDelta": 0.05, "vacancyDelta": -0.01 },
+      "build": { "yearsToBuild": 2, "yearsToStabilize": 1, "leaseUpVacancy": 0.28 }
+    },
+    {
+      "id": "office",
+      "name": "Office",
+      "baseExpenseRatio": 0.45,
+      "capexLift": { "rentIndexDelta": 0.03, "vacancyDelta": -0.01 },
+      "build": { "yearsToBuild": 2, "yearsToStabilize": 2, "leaseUpVacancy": 0.35 }
+    },
+    {
+      "id": "mixeduse",
+      "name": "Mixed Use",
+      "baseExpenseRatio": 0.40,
+      "capexLift": { "rentIndexDelta": 0.05, "vacancyDelta": -0.008 },
+      "build": { "yearsToBuild": 2, "yearsToStabilize": 2, "leaseUpVacancy": 0.26 }
+    },
+    {
+      "id": "hotel",
+      "name": "Hotel",
+      "baseExpenseRatio": 0.55,
+      "capexLift": { "rentIndexDelta": 0.06, "vacancyDelta": -0.02 },
+      "build": { "yearsToBuild": 2, "yearsToStabilize": 2, "leaseUpVacancy": 0.30 }
+    }
+  ]
+}
