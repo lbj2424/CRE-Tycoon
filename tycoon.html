@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CRE Tycoon — Tycoon</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a class="logo link" href="index.html">🏙️</a>
+      <div>
+        <div class="title">CRE Tycoon</div>
+        <div class="subtitle">Tycoon mode</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button id="saveRun" class="btn">Save</button>
+      <button id="loadRun" class="btn">Load</button>
+      <button id="newRun" class="btn">New Run</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid3">
+      <section class="card">
+        <h2>City</h2>
+        <div class="row gap wrap small">
+          <div class="pill">Year: <b id="year"></b></div>
+          <div class="pill">Base Rate: <b id="baseRate"></b></div>
+          <div class="pill">Credit Spread: <b id="spread"></b></div>
+          <div class="pill">Liquidity: <b id="liquidity"></b></div>
+        </div>
+        <div id="neighborhoods" class="list"></div>
+      </section>
+
+      <section class="card">
+        <h2>Portfolio</h2>
+        <div class="row gap wrap small">
+          <div class="pill">Cash: <b id="cash"></b></div>
+          <div class="pill">Equity: <b id="equity"></b></div>
+          <div class="pill">Debt: <b id="debt"></b></div>
+        </div>
+        <div class="row gap wrap small">
+          <div class="pill">NOI: <b id="noi"></b></div>
+          <div class="pill">CF: <b id="cf"></b></div>
+          <div class="pill">DSCR: <b id="dscr"></b></div>
+        </div>
+        <div id="properties" class="list"></div>
+      </section>
+
+      <section class="card">
+        <h2>Actions</h2>
+
+        <div class="row gap wrap">
+          <button id="nextYear" class="btn primary">Next Year</button>
+        </div>
+
+        <hr />
+
+        <h3>Opportunities</h3>
+        <div id="listings" class="list"></div>
+
+        <hr />
+
+        <h3>Build</h3>
+        <div class="row gap wrap">
+          <label class="field">
+            <span>Neighborhood</span>
+            <select id="buildN"></select>
+          </label>
+          <label class="field">
+            <span>Product</span>
+            <select id="buildP"></select>
+          </label>
+          <button id="buildBtn" class="btn">Start Build</button>
+        </div>
+
+        <p class="muted small">
+          Builds take time. Lease-up risk is real. Zoning matters.
+        </p>
+
+        <hr />
+
+        <h3>Event Log</h3>
+        <div id="log" class="log"></div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="ui/tycoon-ui.js"></script>
+</body>
+</html>
