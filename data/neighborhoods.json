@@ -1,0 +1,71 @@
+{
+  "asOf": "2026-02-01",
+  "neighborhoods": [
+    {
+      "id": "downtown",
+      "name": "Downtown Core",
+      "baseDemand": 0.72,
+      "rentIndex": 1.25,
+      "vacancy": 0.10,
+      "capRate": 0.065,
+      "zoning": ["office", "mixeduse", "retail"],
+      "scarcity": 0.8,
+      "entitlementFriction": 0.35
+    },
+    {
+      "id": "university",
+      "name": "University District",
+      "baseDemand": 0.82,
+      "rentIndex": 1.15,
+      "vacancy": 0.06,
+      "capRate": 0.055,
+      "zoning": ["multifamily", "retail", "mixeduse"],
+      "scarcity": 0.6,
+      "entitlementFriction": 0.2
+    },
+    {
+      "id": "suburban",
+      "name": "Suburban Growth",
+      "baseDemand": 0.78,
+      "rentIndex": 1.00,
+      "vacancy": 0.07,
+      "capRate": 0.057,
+      "zoning": ["multifamily", "industrial", "retail"],
+      "scarcity": 0.4,
+      "entitlementFriction": 0.12
+    },
+    {
+      "id": "logistics",
+      "name": "Logistics Corridor",
+      "baseDemand": 0.74,
+      "rentIndex": 0.95,
+      "vacancy": 0.05,
+      "capRate": 0.062,
+      "zoning": ["industrial"],
+      "scarcity": 0.5,
+      "entitlementFriction": 0.08
+    },
+    {
+      "id": "tourist",
+      "name": "Tourist Node",
+      "baseDemand": 0.70,
+      "rentIndex": 1.10,
+      "vacancy": 0.08,
+      "capRate": 0.066,
+      "zoning": ["hotel", "retail", "mixeduse"],
+      "scarcity": 0.7,
+      "entitlementFriction": 0.18
+    },
+    {
+      "id": "agingretail",
+      "name": "Aging Retail Strip",
+      "baseDemand": 0.60,
+      "rentIndex": 0.85,
+      "vacancy": 0.14,
+      "capRate": 0.075,
+      "zoning": ["retail", "mixeduse"],
+      "scarcity": 0.35,
+      "entitlementFriction": 0.15
+    }
+  ]
+}
