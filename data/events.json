@@ -1,0 +1,62 @@
+{
+  "events": [
+    {
+      "id": "rates_up_150",
+      "name": "Rates spike",
+      "scope": "global",
+      "type": "rates",
+      "durationYears": 1,
+      "effects": { "baseRateDelta": 0.015, "spreadDelta": 0.002, "liquidityDelta": -0.12 },
+      "blurb": "Inflation print surprises. Financing gets harder and exit values compress."
+    },
+    {
+      "id": "rates_down_100",
+      "name": "Rates fall",
+      "scope": "global",
+      "type": "rates",
+      "durationYears": 1,
+      "effects": { "baseRateDelta": -0.01, "spreadDelta": -0.001, "liquidityDelta": 0.10 },
+      "blurb": "Growth slows. The market prices in cuts. Values get relief."
+    },
+    {
+      "id": "new_employer_university",
+      "name": "New employer near campus",
+      "scope": "neighborhood",
+      "targetNeighborhood": "university",
+      "type": "demand",
+      "durationYears": 2,
+      "effects": { "demandDelta": 0.08, "rentIndexDelta": 0.03, "vacancyDelta": -0.01 },
+      "blurb": "A major employer opens a hub. Demand rises and concessions tighten."
+    },
+    {
+      "id": "industrial_boost_logistics",
+      "name": "Port expansion",
+      "scope": "neighborhood",
+      "targetNeighborhood": "logistics",
+      "type": "demand",
+      "durationYears": 2,
+      "effects": { "demandDelta": 0.06, "rentIndexDelta": 0.02, "vacancyDelta": -0.008 },
+      "blurb": "Distribution demand picks up. Industrial leases move fast."
+    },
+    {
+      "id": "retail_bankruptcies",
+      "name": "Retail bankruptcies rise",
+      "scope": "neighborhood",
+      "targetNeighborhood": "agingretail",
+      "type": "tenant",
+      "durationYears": 2,
+      "effects": { "vacancyDelta": 0.03, "rentIndexDelta": -0.02, "capRateDelta": 0.006 },
+      "blurb": "Tenant credit deteriorates. Backfill costs spike and buyers demand yield."
+    },
+    {
+      "id": "mf_supply_wave_suburban",
+      "name": "Multifamily supply wave delivers",
+      "scope": "neighborhood",
+      "targetNeighborhood": "suburban",
+      "type": "supply",
+      "durationYears": 2,
+      "effects": { "vacancyDelta": 0.04, "rentIndexDelta": -0.015 },
+      "blurb": "Lots of new units hit at once. Effective rent softens until absorbed."
+    }
+  ]
+}
