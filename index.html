@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CRE Tycoon</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">🏙️</div>
+      <div>
+        <div class="title">CRE Tycoon</div>
+        <div class="subtitle">SimCity meets investing. Learn the cycle by playing it.</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="card grid2">
+      <div>
+        <h1>Choose a mode</h1>
+        <p class="muted">
+          Tycoon is the full city + portfolio sim. Deal Judge is fast underwriting reps.
+          They share the same market logic and can import buys into your run.
+        </p>
+
+        <div class="row gap">
+          <a class="btn primary" href="tycoon.html">Play Tycoon</a>
+          <a class="btn" href="deal-judge.html">Deal Judge</a>
+        </div>
+
+        <hr />
+
+        <h2>Run settings</h2>
+        <div class="row gap wrap">
+          <label class="field">
+            <span>Seed</span>
+            <input id="seed" placeholder="e.g. 20260201" />
+          </label>
+          <label class="field">
+            <span>Difficulty</span>
+            <select id="difficulty">
+              <option value="easy">Easy</option>
+              <option value="normal" selected>Normal</option>
+              <option value="hard">Hard</option>
+            </select>
+          </label>
+          <button id="saveSettings" class="btn">Save</button>
+        </div>
+
+        <p class="muted small">
+          Tip: Seed makes runs reproducible. Same seed = same events and deal flow.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h2>What’s in the MVP</h2>
+        <ul>
+          <li>6 neighborhoods with zoning</li>
+          <li>3 product types (MF, Retail, Industrial)</li>
+          <li>Event deck (rates, demand, supply, tenant credit)</li>
+          <li>Buy / Build / Renovate / Refi / Sell</li>
+          <li>Debt constraints: LTV + DSCR</li>
+          <li>Save/load runs (local storage)</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const KEY = "cretycoon:settings:v1";
+    const saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+    const seedEl = document.getElementById("seed");
+    const diffEl = document.getElementById("difficulty");
+
+    seedEl.value = saved.seed ?? "";
+    diffEl.value = saved.difficulty ?? "normal";
+
+    document.getElementById("saveSettings").addEventListener("click", () => {
+      const settings = {
+        seed: seedEl.value.trim() || null,
+        difficulty: diffEl.value
+      };
+      localStorage.setItem(KEY, JSON.stringify(settings));
+      alert("Saved!");
+    });
+  </script>
+</body>
+</html>
