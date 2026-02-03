@@ -20,6 +20,43 @@ const RUN_DEFAULTS = {
   journal: []
 };
 
+// ----------------- NEW: helper functions for property underwriting -----------------
+function getNeighborhood(state, id) {
+  return state.neighborhoods.find(x => x.id === id);
+}
+
+function makeMaturityYears() {
+  // Commercial-style balloon terms: mostly 5/7/10 years
+  const r = rng();
+  if (r < 0.45) return 5;
+  if (r < 0.75) return 7;
+  return 10;
+}
+
+function computePropertySnapshot(p, productTypesById) {
+  const n = getNeighborhood(state, p.neighborhood);
+  const product = productTypesById[p.productType];
+
+  const noi = computeNOI({
+    baseNOI: p.baseNOI,
+    rentIndex: n.rentIndex * p.rentIndexMult,
+    vacancy: clamp(n.vacancy + p.vacancyDelta, 0.01, 0.40),
+    expenseRatio: product.baseExpenseRatio
+  });
+
+  const capRate = clamp(n.capRate + p.capRateDelta, 0.03, 0.14);
+  const value = valueFromNOI(noi, capRate);
+
+  const ds = annualDebtService({
+    balance: p.loanBalance,
+    rate: p.loanRate,
+    amortYears: p.amortYears,
+    interestOnly: p.interestOnly
+  });
+
+  return { n, product, noi, capRate, value, ds };
+}
+
 function computePortfolio(state, productTypesById) {
   let totalValue = 0, totalDebt = 0, totalNOI = 0, totalCF = 0, totalDS = 0;
 
@@ -27,7 +64,6 @@ function computePortfolio(state, productTypesById) {
     const n = state.neighborhoods.find(x => x.id === p.neighborhood);
     const product = productTypesById[p.productType];
 
-    // Project NOI based on neighborhood conditions + property modifiers
     const noi = computeNOI({
       baseNOI: p.baseNOI,
       rentIndex: n.rentIndex * p.rentIndexMult,
@@ -59,7 +95,6 @@ function computePortfolio(state, productTypesById) {
 }
 
 function pickEvent(events) {
-  // Weighted lightly toward "no event" by sometimes returning null
   const roll = rng();
   if (roll < 0.35) return null;
   return events[Math.floor(rng() * events.length)];
@@ -77,7 +112,6 @@ function generateListings() {
     const productType = allowed[Math.floor(rng() * allowed.length)];
     const product = DATA.productTypes.find(p => p.id === productType);
 
-    // Create a base NOI scaled by neighborhood rentIndex
     const baseNOI = 350000 + rng() * 900000;
     const impliedNOI = baseNOI * n.rentIndex * (1 - n.vacancy);
     const cap = clamp(n.capRate + (rng() - 0.5) * 0.01, 0.04, 0.12);
@@ -104,11 +138,14 @@ function canBuy(listing) {
   return state.cash >= down;
 }
 
+// ----------------- NEW: BUY now includes maturity + LTV tracking + reno fields -----------------
 function buyListing(listing) {
   const down = listing.price * (1 - listing.loanTerms.ltv);
   state.cash -= down;
 
   const loanBalance = listing.price * listing.loanTerms.ltv;
+
+  const maturityYears = makeMaturityYears();
 
   state.properties.push({
     id: `P${listing.id}`,
@@ -116,18 +153,28 @@ function buyListing(listing) {
     neighborhood: listing.neighborhood,
     productType: listing.productType,
     baseNOI: listing.baseNOI,
+
+    // Operating modifiers
     rentIndexMult: 1.0,
     vacancyDelta: 0.0,
     capRateDelta: 0.0,
+
+    // Value-add
+    renoLevel: 0,
+
+    // Loan
+    ltv: listing.loanTerms.ltv,
     loanBalance,
     loanRate: listing.loanTerms.rate,
     amortYears: listing.loanTerms.amortYears,
     interestOnly: listing.loanTerms.interestOnly,
+    maturityYear: state.year + maturityYears,
+
     build: null
   });
 
   state.journal.push({ year: state.year, action: "BUY", target: listing.id, price: listing.price });
-  addLog(el("log"), `Bought ${listing.name} for ${money(listing.price)} (down ${money(down)}).`);
+  addLog(el("log"), `Bought ${listing.name} for ${money(listing.price)} (down ${money(down)}). Loan balloons in ${maturityYears} yrs (Y${state.year + maturityYears}).`);
 }
 
 function startBuild(neighborhoodId, productType) {
@@ -139,7 +186,6 @@ function startBuild(neighborhoodId, productType) {
 
   const product = DATA.productTypes.find(p => p.id === productType);
 
-  // Simple build cost model: more expensive in scarce/high rent areas
   const scarcityPremium = 1 + n.scarcity * 0.35;
   const cost = Math.round((9000000 + rng() * 9000000) * scarcityPremium * n.rentIndex / 1000) * 1000;
 
@@ -148,7 +194,7 @@ function startBuild(neighborhoodId, productType) {
     return;
   }
 
-  // Construction loan: 75% LTC, interest-only
+  // Construction loan: 75% LTC, interest-only, short maturity
   const equity = cost * 0.25;
   const loanBalance = cost * 0.75;
   state.cash -= equity;
@@ -158,14 +204,22 @@ function startBuild(neighborhoodId, productType) {
     name: `${n.name} — New ${product.name}`,
     neighborhood: neighborhoodId,
     productType,
-    baseNOI: 650000, // will become meaningful at stabilization
+
+    baseNOI: 650000,
+
     rentIndexMult: 1.0,
     vacancyDelta: 0.0,
     capRateDelta: 0.0,
+
+    renoLevel: 0,
+
+    ltv: 0.65, // perm loan target after stabilize
     loanBalance,
     loanRate: clamp(state.market.baseRate + state.market.spread + 0.02, 0.04, 0.16),
     amortYears: 30,
     interestOnly: true,
+
+    maturityYear: state.year + 3, // construction maturity (forces delivery / refi pressure)
     build: {
       phase: "construction",
       yearsRemaining: product.build.yearsToBuild,
@@ -184,23 +238,31 @@ function processBuildPhases() {
 
     if (p.build.phase === "construction") {
       p.build.yearsRemaining -= 1;
+
       if (p.build.yearsRemaining <= 0) {
         p.build.phase = "leaseup";
         addLog(el("log"), `Delivered: ${p.name}. Now leasing up.`);
       } else {
         addLog(el("log"), `Construction progress: ${p.name} (${p.build.yearsRemaining} year(s) remaining).`);
       }
+
     } else if (p.build.phase === "leaseup") {
       p.build.stabilizeYearsRemaining -= 1;
-      // Apply temporary vacancy delta while leasing
       p.vacancyDelta = Math.max(p.vacancyDelta, p.build.leaseUpVacancy);
 
       if (p.build.stabilizeYearsRemaining <= 0) {
         p.build = null;
         p.vacancyDelta = 0.0;
-        // convert to amortizing loan
+
+        // Convert to perm loan terms
         p.interestOnly = false;
-        addLog(el("log"), `Stabilized: ${p.name}. Cash flow now reflects stabilized operations.`);
+        p.amortYears = 30;
+        p.loanRate = clamp(state.market.baseRate + state.market.spread + 0.018 + (rng() * 0.01), 0.04, 0.16);
+
+        const maturityYears = makeMaturityYears();
+        p.maturityYear = state.year + maturityYears;
+
+        addLog(el("log"), `Stabilized: ${p.name}. Converted to perm loan. Balloons in ${maturityYears} yrs (Y${p.maturityYear}).`);
       } else {
         addLog(el("log"), `Lease-up: ${p.name} (${p.build.stabilizeYearsRemaining} year(s) to stabilize).`);
       }
@@ -209,7 +271,6 @@ function processBuildPhases() {
 }
 
 function applyOperatingCashFlow(productTypesById) {
-  // Add annual cash flow to cash
   let totalCF = 0;
 
   for (const p of state.properties) {
@@ -230,7 +291,6 @@ function applyOperatingCashFlow(productTypesById) {
       interestOnly: p.interestOnly
     });
 
-    // Update loan balance
     p.loanBalance = Math.max(0, p.loanBalance - ds.principal);
 
     const cf = noi - ds.payment;
@@ -239,6 +299,135 @@ function applyOperatingCashFlow(productTypesById) {
 
   state.cash += totalCF;
   addLog(el("log"), `Operating cash flow this year: ${money(totalCF)}.`);
+}
+
+// ----------------- NEW: SELL + RENOVATE + REFI WALL -----------------
+function sellProperty(propertyId) {
+  const productTypesById = Object.fromEntries(DATA.productTypes.map(p => [p.id, p]));
+  const idx = state.properties.findIndex(x => x.id === propertyId);
+  if (idx < 0) return;
+
+  const p = state.properties[idx];
+  const snap = computePropertySnapshot(p, productTypesById);
+
+  // Simple transaction costs
+  const salePrice = snap.value;
+  const sellingCosts = salePrice * 0.02; // 2% friction
+  const netBeforeDebt = salePrice - sellingCosts;
+  const net = netBeforeDebt - p.loanBalance;
+
+  state.cash += net;
+  state.properties.splice(idx, 1);
+
+  state.journal.push({ year: state.year, action: "SELL", target: propertyId, price: salePrice, net });
+  addLog(el("log"), `Sold ${p.name} for ${money(salePrice)} (costs ${money(sellingCosts)}). Paid off debt ${money(p.loanBalance)}. Net proceeds ${money(net)}.`);
+}
+
+function renovateProperty(propertyId) {
+  const productTypesById = Object.fromEntries(DATA.productTypes.map(p => [p.id, p]));
+  const p = state.properties.find(x => x.id === propertyId);
+  if (!p) return;
+
+  const maxLevel = 3;
+  if ((p.renoLevel || 0) >= maxLevel) {
+    addLog(el("log"), `${p.name}: Renovation maxed out.`);
+    return;
+  }
+
+  const snap = computePropertySnapshot(p, productTypesById);
+
+  // Cost scales with value, but capped
+  const nextLevel = (p.renoLevel || 0) + 1;
+  const baseCost = snap.value * 0.03; // 3% of value per level
+  const cost = clamp(baseCost * (1 + (nextLevel - 1) * 0.35), 200000, 5000000);
+
+  if (state.cash < cost) {
+    addLog(el("log"), `Not enough cash to renovate ${p.name}. Need ${money(cost)}.`);
+    return;
+  }
+
+  state.cash -= cost;
+  p.renoLevel = nextLevel;
+
+  // Benefits: small rent premium + slightly better vacancy
+  p.rentIndexMult = clamp(p.rentIndexMult + 0.03, 0.8, 1.35);
+  p.vacancyDelta = clamp(p.vacancyDelta - 0.005, -0.08, 0.20);
+
+  state.journal.push({ year: state.year, action: "RENO", target: propertyId, cost, level: p.renoLevel });
+  addLog(el("log"), `Renovated ${p.name} (Level ${p.renoLevel}). Cost ${money(cost)}. Rent premium ↑, vacancy ↓.`);
+}
+
+function attemptRefi(p, productTypesById) {
+  const snap = computePropertySnapshot(p, productTypesById);
+
+  // New loan proceeds based on current value and LTV
+  const newLoan = Math.max(0, snap.value * (p.ltv ?? 0.65));
+  const payoff = p.loanBalance;
+
+  const newRate = clamp(state.market.baseRate + state.market.spread + 0.018 + (rng() * 0.01), 0.03, 0.18);
+  const maturityYears = makeMaturityYears();
+
+  if (newLoan >= payoff) {
+    // Cash-out refi
+    const cashOut = newLoan - payoff;
+    state.cash += cashOut;
+
+    p.loanBalance = newLoan;
+    p.loanRate = newRate;
+    p.amortYears = 30;
+    p.interestOnly = false;
+    p.maturityYear = state.year + maturityYears;
+
+    addLog(el("log"), `Refi OK: ${p.name}. New rate ${pct(p.loanRate)}. Cash-out ${money(cashOut)}. New balloon Y${p.maturityYear}.`);
+    return true;
+  }
+
+  // Need to bring cash to close
+  const gap = payoff - newLoan;
+  if (state.cash >= gap) {
+    state.cash -= gap;
+
+    p.loanBalance = newLoan;
+    p.loanRate = newRate;
+    p.amortYears = 30;
+    p.interestOnly = false;
+    p.maturityYear = state.year + maturityYears;
+
+    addLog(el("log"), `Refi tight: ${p.name}. Paid-in ${money(gap)} to refinance. New rate ${pct(p.loanRate)}. Balloon Y${p.maturityYear}.`);
+    return true;
+  }
+
+  addLog(el("log"), `Refi FAILED: ${p.name}. Needs ${money(gap)} to refinance, but you only have ${money(state.cash)}.`);
+  return false;
+}
+
+function handleMaturities() {
+  const productTypesById = Object.fromEntries(DATA.productTypes.map(p => [p.id, p]));
+  const matured = state.properties.filter(p => p.maturityYear && p.maturityYear <= state.year);
+
+  if (!matured.length) return;
+
+  addLog(el("log"), `⚠️ REFI WALL: ${matured.length} loan(s) matured this year.`);
+
+  // Process one by one so forced sales update cash for later ones
+  for (const p of [...matured]) {
+    // Try refinance first
+    const ok = attemptRefi(p, productTypesById);
+    if (ok) continue;
+
+    // If refi fails, forced sale
+    addLog(el("log"), `Forced sale risk: ${p.name} due to maturity.`);
+    const id = p.id;
+
+    // Forced sale uses sell logic but if net is negative, you eat the loss
+    sellProperty(id);
+
+    // If cash goes massively negative, clamp to zero (bankruptcy-lite)
+    if (state.cash < 0) {
+      addLog(el("log"), `Bankruptcy shock: Sale proceeds were insufficient. Cash reset to $0.`);
+      state.cash = 0;
+    }
+  }
 }
 
 function render() {
@@ -269,30 +458,34 @@ function render() {
     ]
   )).join("");
 
-  // Properties list
+  // Properties list + NEW buttons
   el("properties").innerHTML = state.properties.length
     ? state.properties.map(p => {
-        const n = state.neighborhoods.find(x => x.id === p.neighborhood);
-        const product = productTypesById[p.productType];
-        const noi = computeNOI({
-          baseNOI: p.baseNOI,
-          rentIndex: n.rentIndex * p.rentIndexMult,
-          vacancy: clamp(n.vacancy + p.vacancyDelta, 0.01, 0.40),
-          expenseRatio: product.baseExpenseRatio
-        });
-        const value = valueFromNOI(noi, clamp(n.capRate + p.capRateDelta, 0.03, 0.14));
-        const ds = annualDebtService({ balance: p.loanBalance, rate: p.loanRate, amortYears: p.amortYears, interestOnly: p.interestOnly });
+        const snap = computePropertySnapshot(p, productTypesById);
+        const balloon = p.maturityYear ? `Y${p.maturityYear}` : "—";
+        const reno = p.renoLevel || 0;
+
+        const actionBtns = `
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="btn" data-reno="${p.id}">Renovate</button>
+            <button class="btn danger" data-sell="${p.id}">Sell</button>
+          </div>
+        `;
+
         return itemHTML(
           p.name,
           [
-            ["Type", product.name],
-            ["NOI", money(noi)],
-            ["Value", money(value)],
+            ["Type", snap.product.name],
+            ["NOI", money(snap.noi)],
+            ["Value", money(snap.value)],
             ["Debt", money(p.loanBalance)],
             ["Rate", pct(p.loanRate)],
-            ["DSCR", dscr(noi, ds.payment).toFixed(2)],
+            ["DSCR", dscr(snap.noi, snap.ds.payment).toFixed(2)],
+            ["Balloon", balloon],
+            ["Reno", `Level ${reno}`],
             ["Status", p.build ? (p.build.phase === "construction" ? "Under Construction" : "Lease-up") : "Stabilized"]
-          ]
+          ],
+          actionBtns
         );
       }).join("")
     : `<div class="muted">No properties yet. Buy a listing or start a build.</div>`;
@@ -340,6 +533,25 @@ function hookUI() {
     buyListing(listing);
     state.listings = state.listings.filter(x => x.id !== id);
     render();
+  });
+
+  // NEW: property action buttons
+  el("properties").addEventListener("click", (e) => {
+    const sellBtn = e.target.closest("[data-sell]");
+    if (sellBtn) {
+      const id = sellBtn.getAttribute("data-sell");
+      sellProperty(id);
+      render();
+      return;
+    }
+
+    const renoBtn = e.target.closest("[data-reno]");
+    if (renoBtn) {
+      const id = renoBtn.getAttribute("data-reno");
+      renovateProperty(id);
+      render();
+      return;
+    }
   });
 
   el("saveRun").addEventListener("click", () => {
@@ -395,11 +607,16 @@ function nextYear() {
     updateNeighborhoodYear(n, state.market, rng);
   }
 
-  // 4) Properties: construction/lease-up + ops cash flow + debt amort
+  // 4) Properties: build phases
   processBuildPhases();
+
+  // 4.5) NEW: Refi wall / maturities (before collecting cash flow)
+  handleMaturities();
+
+  // 5) Ops cash flow + debt amort
   applyOperatingCashFlow(productTypesById);
 
-  // 5) Generate new listings
+  // 6) New listings
   generateListings();
 
   render();
@@ -439,7 +656,7 @@ async function initRun(forceNew = false) {
     demand: n.baseDemand
   }));
 
-  // Difficulty tweaks (simple)
+  // Difficulty tweaks
   const settings2 = getSettings();
   const diff = settings2.difficulty || "normal";
   if (diff === "easy") state.cash = 4500000;
